@@ -5,24 +5,29 @@
 #include "client.hpp"
 
 
-std::shared_ptr<dio> create_instance (char *argv[])
+std::shared_ptr<dio> create_instance ( int argc, char *argv[])
 {
-    if(argv[1] == "server")
+    if( std::string(argv[1]) == "server" && argc == 2 )
     {
-        return std::move(std::make_shared<server>(argv[2]));
+        int port = std::stoi(argv[2]);
+        return std::make_shared<server>(port);
     }
-    else if (argv[1] == "client")
+    else if ( std::string(argv[1]) == "client" && argc == 3 )
     {
-        return std::move(std::make_shared<client>(argv[2], argv[3]));
+        int port = std::stoi(argv[3]);
+        return std::make_shared<client>(argv[2], port);
     }
+    return nullptr;
 }
 
 int main(int argc, char *argv[])
 {
-
-    std::shared_ptr<dio> _dio = create_instance(argv);
-    _dio.get()->Init();
-    _dio.get()->Start();
+    auto _dio = create_instance(argc, argv);
+    if( _dio )
+    {
+        _dio.get()->Init();
+        _dio.get()->Start();
+    }
 
     return 0;
 }
