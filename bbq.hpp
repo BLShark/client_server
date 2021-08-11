@@ -58,7 +58,7 @@ class BBQ
 
     void StartCooking(){
         srand(time(NULL));
-        auto select = rand() % 2 + 0;
+        auto select = rand() % 3 + 0;
         std::this_thread::sleep_for (std::chrono::seconds(5));
         m_callBackWhenReady(_meals.at(select));
     }

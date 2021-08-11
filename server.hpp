@@ -7,8 +7,7 @@ class server: public dio{
 private:
     sockaddr_in m_servAddr;
     int m_sockId;
-    int m_port;
-    int max_client = 2;
+    int max_client = 10;
     std::list<std::thread> m_clientThreads;
 
 
@@ -26,7 +25,7 @@ private:
         BBQ _bbq(push_notify);
         while (1)
         {
-            //mutex
+
             bzero((char *)&m_servAddr, sizeof(m_servAddr));
             char msg[1500];
             memset(&msg, 0, sizeof(msg)); //clear the buffer
@@ -38,15 +37,17 @@ private:
             }
 
             auto answer = _bbq.Request(std::move(std::string(msg)));
-            memset(&msg, 0, sizeof(msg)); //clear the buffer
-            strcpy(msg, answer.c_str());
-            send(client, (char*)&msg, strlen(msg), 0);
+            if (!answer.empty()){
+                memset(&msg, 0, sizeof(msg)); //clear the buffer
+                strcpy(msg, answer.c_str());
+                send(client, (char*)&msg, strlen(msg), 0);
+            }
 
         }
     }
 
 public:
-    server(int port): m_port(port){}
+    server(int port, char* serverIp): dio(port, serverIp){}
     ~server()
     {
         close(m_sockId);
@@ -79,11 +80,12 @@ public:
             std::cout<<"error while trying to connect to listen to a client"<<std::endl;
             return false;
         }
+        std::cout<<"The restaurant/server waits first guest/clients"<<std::endl;
         return true;
     }
 
     int  ListenForConnection(){
-        return listen(m_sockId, 10);
+        return listen(m_sockId, max_client);
     }
 
     virtual void Start()

@@ -1,16 +1,12 @@
 #pragma once
 #include <atomic>
-#include <netdb.h>
-#include <arpa/inet.h>
 #include "dio.hpp"
 
 class client : public dio
 {
     sockaddr_in sendSockAddr;
-    char* m_serverIp = 0;
-    int m_port = 0;
+    struct hostent *host;
     int m_clientSd = 0;
-//    std::thread m_receiveMsgThread;
     std::atomic<bool> m_threadExit;
 
 private:
@@ -20,20 +16,22 @@ private:
             char rcv_msg[1000];
             while(1){
                 if (m_threadExit) break;
-
+               memset(&rcv_msg, 0, sizeof(rcv_msg)); //clear the buffer
                recv(m_clientSd, (char*)&rcv_msg, sizeof(rcv_msg), 0);
-               if(!strcmp(rcv_msg, "CLOSED BYE!"))
+               if(!strcmp(rcv_msg, "SERVED BYE!"))
                {
-                   std::cout << "The restaurant is closed. \n Server has quit the session" << std::endl;
+                   std::cout << "The restaurant is closed. \n Server has quit "
+                                "the session. \n Type exit to leave the restaurant."
+                             << std::endl;
                    break;
                }
-               std::cout<<"Server: "<<std::endl;
+               std::cout<<"Server: "<<rcv_msg<<std::endl;
             }
         });
 
         char msg[1000];
         while(1){
-            std::cout << ">";
+            std::cerr << ">";
             std::string data;
             getline(std::cin, data);
             memset(&msg, 0, sizeof(msg));//clear the buffer
@@ -41,32 +39,34 @@ private:
             if(data == "exit")
             {
                send(m_clientSd, (char*)&msg, strlen(msg), 0);
+               m_threadExit = true;
                break;
             }
             send(m_clientSd, (char*)&msg, strlen(msg), 0);
         }
-
+        std::cout<<"exiting the program. wait receiving thread to join.";
         receive_t.join();
+        std::cout<<"thread has joined."<<std::endl;
     }
 
 public:
-    client(char *serverIp, int port ) {
-        m_serverIp = serverIp;
-        m_port = port;
+    client(int port, char *serverIp ) : dio(port, serverIp), m_threadExit(false) {
+
     }
     ~client(){}
 
-    inline virtual bool Init(){
-        struct hostent *host = gethostbyname(m_serverIp);
+     virtual bool Init(){
+        host = gethostbyname(m_serverIp);
         bzero((char *)&sendSockAddr, sizeof(sendSockAddr));
         sendSockAddr.sin_family = AF_INET;
         sendSockAddr.sin_addr.s_addr =
             inet_addr(inet_ntoa(*(struct in_addr *)*host->h_addr_list));
         sendSockAddr.sin_port = htons(m_port);
         m_clientSd = socket(AF_INET, SOCK_STREAM, 0);
+        return true;
     }
 
-    inline virtual void Start() {
+     virtual void Start() {
         int status = connect(m_clientSd,
                                  (sockaddr*) &sendSockAddr, sizeof(sendSockAddr));
         if(status < 0)
